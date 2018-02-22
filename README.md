@@ -23,6 +23,10 @@ Images should be stored in the following layout:
 
 
 ### To train a new classifier
+Download the SVHN data set:
+* go to http://ufldl.stanford.edu/housenumbers/
+* download the cropped digits (Format 2): train_32x32.mat and test_32x32.mat
+
 To train a new classifier on the SVHN data:
 * `python svhn_classifier.py --train`
 
