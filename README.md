@@ -26,6 +26,7 @@ Images should be stored in the following layout:
 Download the SVHN data set:
 * go to http://ufldl.stanford.edu/housenumbers/
 * download the cropped digits (Format 2): train_32x32.mat and test_32x32.mat
+* run `python preprocess_svhn.py --data path-to-the-downloaded-files --save_to where-to-save-normalized-data`
 
 To train a new classifier on the SVHN data:
 * `python svhn_classifier.py --train`
