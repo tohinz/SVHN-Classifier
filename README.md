@@ -9,6 +9,8 @@ Pretrained classifier to classify SVHN images, based on Keras with the Tensorflo
 To predict existing images with the pre-trained model (95.45% accuracy on the SVHN test set)
 * `python svhn_classifier.py --predict --model weights.hdf5 --img_path path-to-images`
 
+Labels for the pretrained model are according to the digit, i.e. digit "0" has label "0", digit "1" has label "1", etc. This is different from the original data, in which digit "0" has label "10". When using the pretrained model to predict data make sure images depicting a "0" are stored in the folder labelled with "0", not "10".
+
 Images should be stored in the following layout:
 * path-to-images
     * class-0
