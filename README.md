@@ -10,15 +10,16 @@ To predict existing images with the pre-trained model (95.45% accuracy on the SV
 * `python svhn_classifier.py --predict --model weights.hdf5 --img_path path-to-images`
 
 Images should be stored in the following layout:
-* class-0
-    * img1.jpg
-    * img2.jpg
+path-to-images
+    * class-0
+        * img1.jpg
+        * img2.jpg
+        * ...
+    * class-1
+        * img1.jpg
+        * img2.jpg
+        * ...
     * ...
-* class-1
-    * img1.jpg
-    * img2.jpg
-    * ...
-* ...
 
 
 ### To train a new classifier
