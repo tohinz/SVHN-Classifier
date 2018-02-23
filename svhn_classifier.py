@@ -6,15 +6,12 @@ import numpy as np
 import datetime
 import dateutil.tz
 import argparse
-
-from tensorflow.examples.tutorials.mnist import input_data
+import h5py
 
 import keras
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten
-from keras.layers import Conv2D, MaxPooling2D
+from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten, Activation
 from keras.layers.normalization import BatchNormalization
-from keras.layers.advanced_activations import LeakyReLU
 from keras.preprocessing import image
 
 
@@ -26,7 +23,7 @@ parser.add_argument("--learning_rate", help="Learning rate for the optimizer [0.
 parser.add_argument("--batch_size", help="The size of batch images [64]", type=int, default=64)
 parser.add_argument("--optimizer", help="Optimizer to use. Can be one of: SGD, RMSprop, Adadelta, Adam [Adam]",
                     type=str, default="Adam", choices=set(("SGD", "RMSprop", "Adadelta", "Adam")))
-parser.add_argument("--val_size", help="The size of the validation set [5000]", type=int, default=5000)
+parser.add_argument("--val_size", help="The size of the validation set [5000]", type=int, default=10000)
 parser.add_argument("--log_dir", help="Directory name to save the checkpoints and logs [log_dir]",
                     type=str, default="log_dir")
 parser.add_argument("--data_set_path", help="Path where data set for training is stored. [svhn_data]",
@@ -50,70 +47,71 @@ with open(log_dir + "/hyperparameters_"+timestamp+".csv", "wb") as f:
         f.write(arg + "," + str(FLAGS.__dict__[arg]) + "\n")
 
 
-# use mnist data from the specified folder (download if not already there)
+# load svhn data from the specified folder
 def load_svhn_data(path, val_size):
-    x_train = np.load("/informatik2/wtm/home/hinz/Datasets/SVHN_cropped/train_32x32_normalized.npy")
-    y_train = sio.loadmat('/informatik2/wtm/home/hinz/Datasets/SVHN_cropped/train_32x32.mat')['y'].flatten() - 1
-    y_train = keras.utils.to_categorical(y_train, num_classes)
-    print(y_train.shape)
+    with h5py.File(path+'/SVHN_train.hdf5', 'r') as f:
+        shape = f["X"].shape
+        x_train = f["X"][:shape[0]-val_size]
+        y_train = f["Y"][:shape[0]-val_size].flatten()
+        x_val = f["X"][shape[0]-val_size:]
+        y_val = f["Y"][shape[0] - val_size:].flatten()
 
-    x_test = np.load("/informatik2/wtm/home/hinz/Datasets/SVHN_cropped/test_32x32_normalized.npy")
-    y_test = sio.loadmat('/informatik2/wtm/home/hinz/Datasets/SVHN_cropped/test_32x32.mat')['y'].flatten() - 1
-    y_test = keras.utils.to_categorical(y_test, num_classes)
-    print(y_test.shape)
+    with h5py.File(path+'/SVHN_test.hdf5', 'r') as f:
+        x_test = f["X"][:]
+        y_test = f["Y"][:].flatten()
+
+    y_train = keras.utils.to_categorical(y_train, 10)
+    y_val = keras.utils.to_categorical(y_val, 10)
+    y_test = keras.utils.to_categorical(y_test, 10)
 
     return (x_train, y_train), (x_val, y_val), (x_test, y_test)
 
 
 # build the classification model
 def build_model(optimizer, learning_rate, input_shape=(32, 32, 3)):
-    weight_init = keras.initializers.RandomNormal(mean=0.0, stddev=0.02)
-
     model = Sequential()
-    model.add(Conv2D(32, kernel_size=(3, 3), input_shape=input_shape, padding="same"))
+    model.add(Conv2D(32, kernel_size=3, input_shape=input_shape, padding="same"))
     model.add(BatchNormalization())
     model.add(Activation('relu'))
-    model.add(Conv2D(32, (3, 3), padding="same"))
+    model.add(Conv2D(32, 3, padding="same"))
     model.add(BatchNormalization())
     model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(MaxPooling2D(pool_size=2))
     model.add(Dropout(0.3))
 
-    model.add(Conv2D(64, (3, 3)))
+    model.add(Conv2D(64, 3))
     model.add(BatchNormalization())
     model.add(Activation('relu'))
-    model.add(Conv2D(64, (3, 3), padding="same"))
+    model.add(Conv2D(64, 3, padding="same"))
     model.add(BatchNormalization())
     model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(MaxPooling2D(pool_size=2))
     model.add(Dropout(0.3))
 
-    model.add(Conv2D(128, (3, 3)))
+    model.add(Conv2D(128, 3))
     model.add(BatchNormalization())
     model.add(Activation('relu'))
-    model.add(Conv2D(128, (3, 3), padding="same"))
+    model.add(Conv2D(128, 3, padding="same"))
     model.add(BatchNormalization())
     model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(MaxPooling2D(pool_size=2))
     model.add(Dropout(0.3))
 
     model.add(Flatten())
     model.add(Dense(512, activation='relu'))
     model.add(Dropout(0.3))
 
-    model.add(Dense(num_classes, activation='softmax'))
+    model.add(Dense(10, activation='softmax'))
 
     lr = learning_rate
     optimizers = {"SGD": keras.optimizers.SGD(lr=lr), "RMSprop": keras.optimizers.RMSprop(lr=lr),
-                  "Adadelta": keras.optimizers.Adadelta(lr=lr), "Adam": keras.optimizers.Adam(lr=lr)
-                  }
+                  "Adadelta": keras.optimizers.Adadelta(lr=lr), "Adam": keras.optimizers.Adam(lr=lr)}
 
     model.compile(loss=keras.losses.categorical_crossentropy,
                   optimizer=optimizers[optimizer],
                   metrics=['accuracy'])
 
     return model
-
 
 
 # training the model

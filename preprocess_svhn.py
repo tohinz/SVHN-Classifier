@@ -2,36 +2,22 @@ import numpy as np
 import os
 import argparse
 import scipy.io as sio
-from shutil import copyfile
-
+import h5py
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--data", help="Path to the cropped SVHN files (train_32x32.mat and test_32x32.mat).", type=str)
+parser.add_argument("--save_to", help="Path where the normalized images are stored.", type=str, default="")
 FLAGS = parser.parse_args()
 
+assert os.path.exists(FLAGS.data+'/train_32x32.mat'), "There exists no file \"train_32x32.mat\" in {}".format(FLAGS.data)
+assert os.path.exists(FLAGS.data+'/test_32x32.mat'), "There exists no file \"test_32x32.mat\" in {}".format(FLAGS.data)
 
-##normalize SVHN
-# img_array = sio.loadmat('/informatik2/wtm/home/hinz/Datasets/SVHN_cropped/train_32x32.mat')['X']
-#
-# rows = img_array.shape[0]
-# cols = img_array.shape[1]
-# chans = img_array.shape[2]
-# num_imgs = img_array.shape[3]
-# scalar = 1 / 255.
-# # Note: not the most efficent way but can monitor what is happening
-# new_array = np.empty(shape=(num_imgs, rows, cols, chans), dtype=np.float32)
-# for x in range(0, num_imgs):
-#     # TODO reuse normalize_img here
-#     chans = img_array[:, :, :, x]
-#     # normalize pixels to 0 and 1. 0 is pure white, 1 is pure channel color
-#     norm_vec = (255-chans)*1.0/255.0
-#     # Mean Subtraction
-#     # norm_vec -= np.mean(norm_vec, axis=0)
-#     new_array[x] = norm_vec
-# # print(new_array[0])
-# # exit()
-# np.save("/informatik2/wtm/home/hinz/Datasets/SVHN_cropped/train_32x32_normalized.npy", new_array)
-# exit()
+if FLAGS.save_to == "":
+    FLAGS.save_to = FLAGS.data
+else:
+    assert os.path.exists(FLAGS.save_to), "The specified directory {} to save the data does not exist".\
+        format(FLAGS.save_to)
+
 
 def load_images(path):
     train_images = sio.loadmat(path+'/train_32x32.mat')
@@ -41,29 +27,30 @@ def load_images(path):
 
 
 def normalize_images(images):
-    rows = images.shape[0]
-    cols = images.shape[1]
-    chans = images.shape[2]
-    num_imgs = images.shape[3]
+    imgs = images["X"]
+    imgs = np.transpose(imgs, (3, 0, 1, 2))
+
+    labels = images["y"]
+    # replace label "10" with label "0"
+    labels[labels == 10] = 0
+
+    # normalize images so pixel values are in range [0,1]
     scalar = 1 / 255.
-    images = images * scalar
+    imgs = imgs * scalar
 
-    return images
-    # Note: not the most efficent way but can monitor what is happening
-    # new_array = np.empty(shape=(num_imgs, rows, cols, chans), dtype=np.float32)
-    # for x in range(0, num_imgs):
-    #     # TODO reuse normalize_img here
-    #     chans = img_array[:, :, :, x]
-    #     # normalize pixels to 0 and 1. 0 is pure white, 1 is pure channel color
-    #     norm_vec = (255 - chans) * 1.0 / 255.0
-    #     # Mean Subtraction
-    #     # norm_vec -= np.mean(norm_vec, axis=0)
-    #     new_array[x] = norm_vec
+    return imgs, labels
 
 
-def save_data():
-    pass
+def save_data(images, labels, name):
+    with h5py.File(name+".hdf5", "w") as f:
+        f.create_dataset("X", data=images, shape=images.shape, dtype='float32', compression="gzip")
+        f.create_dataset("Y", data=labels, shape=labels.shape, dtype='int32', compression="gzip")
+
 
 train_images, test_images = load_images(FLAGS.data)
-images = normalize_images()
-store(images)
+
+train_images_normalized, train_labels = normalize_images(train_images)
+save_data(train_images_normalized, train_labels, "SVHN_train")
+
+test_images_normalized, test_labels = normalize_images(test_images)
+save_data(test_images_normalized, test_labels, "SVHN_test")
