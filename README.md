@@ -1,5 +1,5 @@
 # SVHN-Classifier
-Pretrained classifier to classify SVHN images, based on Keras with the Tensorflow backend.
+Pretrained classifier (Convolutional Neural Network, CNN) to classify SVHN images, based on Keras with the Tensorflow backend.
 
 ### Requirements:
 * Keras 2.1.4
